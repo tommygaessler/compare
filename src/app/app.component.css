@@ -1,0 +1,63 @@
+mat-grid-list {
+  position: unset;
+}
+
+mat-grid-tile {
+  background: lightblue;
+}
+
+mat-grid-tile mat-icon {
+  color: #ffffff;
+}
+
+p {
+  margin: 0;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  color: #ffffff;
+}
+
+.view {
+  height: 100vh;
+  align-items: center;
+}
+
+.sessionLoading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+video, canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16/9;
+  background-color: lightblue;
+}
+
+.config {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+}
+
+.config mat-form-field {
+  width: 300px;
+}
+
+.controls {
+  position: fixed;
+  bottom: 20px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.controls button {
+  margin-left: 10px;
+  margin-right: 10px;
+}
