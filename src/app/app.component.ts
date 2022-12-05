@@ -1,7 +1,7 @@
 import { Component, Inject } from '@angular/core'
 import { Platform } from '@angular/cdk/platform'
 import { LocationStrategy } from '@angular/common'
-import { FormGroup, FormControl } from '@angular/forms'
+import { UntypedFormGroup, UntypedFormControl } from '@angular/forms'
 import { HttpClient } from '@angular/common/http'
 import { DOCUMENT } from '@angular/common'
 
@@ -44,7 +44,7 @@ export class AppComponent {
   videoSDKProvider: string = 'zoom'
 
   // config
-  configForm: FormGroup
+  configForm: UntypedFormGroup
   breakpoint: any
 
   // http://10.100.124.51:8080/test?appKey=fd9U9Hyb2pRtcRxzamyfO2CkOQ1L4E3hxMx2&appSecret=suYY2WfUtWx8UEpyTgQZOvjvmmWc0xSMo0g6&sessionKey=test&topic=testsdk&role=1&password=zoom123&mfUrl=https://zoom.us
@@ -67,11 +67,11 @@ export class AppComponent {
     console.log('Desktop Safri?', this.platform.SAFARI)
     console.log('Desktop Chromium?', this.platform.BLINK)
 
-    this.configForm = new FormGroup({
-      videoSDKProvider: new FormControl('zoom'),
-      yourName: new FormControl('Tommy'),
-      sessionName: new FormControl('testsdk'),
-      sessionPasscode: new FormControl('zoom123')
+    this.configForm = new UntypedFormGroup({
+      videoSDKProvider: new UntypedFormControl('zoom'),
+      yourName: new UntypedFormControl('Tommy'),
+      sessionName: new UntypedFormControl('testsdk'),
+      sessionPasscode: new UntypedFormControl('zoom123')
     })
 
     history.pushState(null, '', window.location.href)
