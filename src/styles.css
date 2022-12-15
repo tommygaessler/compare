@@ -2,7 +2,11 @@
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
-#local-media video, #remote-media-div video {
+#twilio-self-view-div video {
   width: 100%;
-  vertical-align: middle;
+  transform: scaleX(-1);
+}
+
+#twilio-user-view-div video {
+  width: 100% !important;
 }

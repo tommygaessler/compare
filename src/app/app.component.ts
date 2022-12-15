@@ -4,10 +4,13 @@ import { LocationStrategy } from '@angular/common'
 import { UntypedFormGroup, UntypedFormControl } from '@angular/forms'
 import { HttpClient } from '@angular/common/http'
 import { DOCUMENT } from '@angular/common'
+import { MatSnackBar, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
 
 import ZoomVideo from '@zoom/videosdk'
 import AgoraRTC from 'agora-rtc-sdk-ng'
 import { connect, createLocalTracks, createLocalVideoTrack, createLocalAudioTrack } from 'twilio-video'
+
+declare var MediaStreamTrackProcessor: any;
 
 @Component({
   selector: 'app-root',
@@ -19,9 +22,10 @@ export class AppComponent {
   // zoom
   zoomClient: any
   zoomStream: any
-  cmdChannel: any
   zoomAudioDecode: boolean = false
   zoomAudioEncode: boolean = false
+  useVideoElementForZoom: boolean = false
+  useCanvasElementForZoom: boolean = false
 
   // twilio
   twilioRoom: any
@@ -30,14 +34,19 @@ export class AppComponent {
   agoraClient: any
 
   // state
-  inSession: boolean = false
+  session: boolean = false
   sessionLoading: boolean = false
+  sessionError: boolean = false
   camera: boolean = false
   cameraLoading: boolean = false
+  cameraError: boolean = false
   mic: boolean = false
   micLoading: boolean = false
+  micError: boolean = false
   audio: boolean = false
   audioLoading: boolean = false
+  audioError: boolean = false
+  
   activeSpeaker: any;
 
   // sdk
@@ -47,29 +56,12 @@ export class AppComponent {
   configForm: UntypedFormGroup
   breakpoint: any
 
-  // http://10.100.124.51:8080/test?appKey=fd9U9Hyb2pRtcRxzamyfO2CkOQ1L4E3hxMx2&appSecret=suYY2WfUtWx8UEpyTgQZOvjvmmWc0xSMo0g6&sessionKey=test&topic=testsdk&role=1&password=zoom123&mfUrl=https://zoom.us
-
-  // Allow participants to join anytime, no waiting room
-
-  // Advisor (Zoom Client) joined first with role 1, was host. Client (Video SDK) joined second with role 1, was co host.
-  // Client (Video SDK) joined first with role 1, was host. Advisor (Zoom Client) joined second with role 1, was co host.
-
-  // Advisor (Zoom Client) joined first with role 0, was participant. Client (Video SDK) joined second with role 0, was participant.
-  // Client (Video SDK) joined first with role 0, was participant. Advisor (Zoom Client) joined second with role 0, was participant.
-
-  // Advisor (Zoom Client) joined first with role 1, was host. Client (Video SDK) joined second with role 0, was participant.
-  // Client (Video SDK) joined first with role 0, was participant. Advisor (Zoom Client) joined second with role 1, was host.
-
-  // Advisor (Zoom Client) joined first with role 0, was participant. Client (Video SDK) joined second with role 1, was host.
-  // Client (Video SDK) joined first with role 1, was host. Advisor (Zoom Client) joined second with role 0, was participant.
-
-  constructor(public platform: Platform, private locationStrategy: LocationStrategy, public httpClient: HttpClient, @Inject(DOCUMENT) document: Document) {
+  constructor(public platform: Platform, private locationStrategy: LocationStrategy, public httpClient: HttpClient, @Inject(DOCUMENT) document: Document, private _snackBar: MatSnackBar) {
     console.log('Desktop Safri?', this.platform.SAFARI)
-    console.log('Desktop Chromium?', this.platform.BLINK)
 
     this.configForm = new UntypedFormGroup({
       videoSDKProvider: new UntypedFormControl('zoom'),
-      yourName: new UntypedFormControl('Tommy'),
+      yourName: new UntypedFormControl('User A'),
       sessionName: new UntypedFormControl('testsdk'),
       sessionPasscode: new UntypedFormControl('zoom123')
     })
@@ -98,8 +90,7 @@ export class AppComponent {
     if(this.videoSDKProvider === 'zoom') {
       this.httpClient.post('https://videosdk-sample-signature.herokuapp.com', {
         sessionName: configForm.sessionName,
-        role: 0,
-        sessionKey: 'test'
+        role: 0
       }).toPromise().then((data: any) => {
         console.log(data.signature)
         this.join(data.signature, configForm)
@@ -141,9 +132,8 @@ export class AppComponent {
         console.log(data)
         console.log(this.zoomClient.getSessionInfo())
         this.zoomStream = this.zoomClient.getMediaStream()
-        this.cmdChannel = this.zoomClient.getCommandClient()
         this.sessionLoading = false
-        this.inSession = true
+        this.session = true
 
         console.log(this.zoomClient.getAllUser())
 
@@ -151,8 +141,9 @@ export class AppComponent {
           this.activeSpeaker = this.zoomClient.getAllUser()[1]
 
           if(this.activeSpeaker.bVideoOn) {
+            // could add a loader here for particpant video
             console.log('loading particpant video')
-            this.zoomStream.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then((data: any) => {
+            this.zoomStream.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 2).then((data: any) => {
               console.log(data)
             })
           }
@@ -171,6 +162,12 @@ export class AppComponent {
         })
 
         this.zoomClient.on('user-added', (payload: any) => {
+
+          this._snackBar.open(payload[0].displayName + ' joined', '', {
+            verticalPosition: 'top',
+            duration: 2 * 1000,
+          });
+
           if(!this.activeSpeaker) {
             console.log('second user joined', payload)
             console.log(this.zoomClient.getAllUser())
@@ -180,6 +177,20 @@ export class AppComponent {
           }
         })
 
+        this.zoomClient.on('user-updated', (payload: any) => {
+          // why does this trigger for myself? Maybe an edge case here?
+          if(this.zoomClient.getCurrentUserInfo() && this.zoomClient.getCurrentUserInfo().userId !== payload[0].userId) {
+            if(payload[0].userId === this.activeSpeaker.userId) {
+              if("audio" in payload[0]) {
+                this.activeSpeaker.audio = payload[0].audio
+              } else if("muted" in payload[0]) {
+                this.activeSpeaker.muted = payload[0].muted
+              }
+            }
+          }
+        })
+
+        // why does user-removed trigger when a user joins? Somethings happens?
         this.zoomClient.on('user-removed', (payload: any) => {
           // why does an error throw here?
           if(this.activeSpeaker.userId === payload[0].userId) {
@@ -192,10 +203,21 @@ export class AppComponent {
 
             if(this.zoomClient.getAllUser().length > 1) {
               this.activeSpeaker = this.zoomClient.getAllUser()[1]
+
+              if(this.activeSpeaker.bVideoOn) {
+                this.zoomStream.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 2).then(() => {
+                  console.log(data)
+                })
+              }
             } else {
               this.activeSpeaker = null
             }
           }
+
+          this._snackBar.open(payload[0].userId + ' left', '', {
+            verticalPosition: 'top',
+            duration: 2 * 1000,
+          });
         })
 
         this.zoomClient.on('active-speaker', (payload: any) => {
@@ -212,9 +234,12 @@ export class AppComponent {
               return payload[0].userId === user.userId
             })[0]
 
+            console.log(this.activeSpeaker)
+
             // render their video if it is on
             if(this.activeSpeaker.bVideoOn) {
-              this.zoomStream.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then(() => {
+              // could add a loader here for particpant video
+              this.zoomStream.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 2).then(() => {
                 console.log(data)
               })
             }
@@ -226,7 +251,8 @@ export class AppComponent {
 
           if(!this.activeSpeaker || payload.userId === this.activeSpeaker.userId) {
             if (payload.action === 'Start') {
-              this.zoomStream.renderVideo(document.getElementById('participant-canvas'), payload.userId, 1920, 1080, 0, 0, 3).then((data: any) => {
+              // could add a loader here for particpant video
+              this.zoomStream.renderVideo(document.getElementById('participant-canvas'), payload.userId, 1920, 1080, 0, 0, 2).then((data: any) => {
                 this.activeSpeaker = this.zoomClient.getAllUser().filter((user:any) => {
                   return payload.userId === user.userId
                 })[0]
@@ -250,50 +276,265 @@ export class AppComponent {
         this.sessionLoading = false
       })
     } else if(this.videoSDKProvider === 'twilio') {
-      connect(token, { name: configForm.sessionName, audio: false, video: false}).then((data: any) => {
+      connect(token, { name: configForm.sessionName, audio: false, video: false, dominantSpeaker: true }).then((data: any) => {
         this.twilioRoom = data
         console.log(`Successfully joined a Room: ${this.twilioRoom}`)
         this.sessionLoading = false
-        this.inSession = true
+        this.session = true
 
-        // createLocalVideoTrack
+        console.log(this.twilioRoom.participants)
+        console.log()
 
-        // second particpant no mic control?
+        // set active speaker
+        if(Array.from(this.twilioRoom.participants, ([name, value]) => ({name, value})).length) {
+          console.log(this.twilioRoom.participants[1])
+          this.activeSpeaker = Array.from(this.twilioRoom.participants, ([name, value]) => ({name, value}))[0]
 
-        // twilio only render one video at a time?
+          console.log(this.activeSpeaker)
+
+          if(this.activeSpeaker.value.videoTracks.size) {
+            // could add a loader here for particpant video
+            console.log('load particpant video')
+          }
+
+          console.log('active speaker', this.activeSpeaker)
+        }
 
         this.twilioRoom.participants.forEach((participant: any) => {
           console.log(participant)
           participant.tracks.forEach((publication: any) => {
             console.log(publication)
             if (publication.track) {
-              document.getElementById('remote-media-div')!.appendChild(publication.track.attach());
+              console.log('render the particpant video')
+              document.getElementById('twilio-user-view-div')!.appendChild(publication.track.attach());
 
+              publication.track.on('disabled', () => {
+                console.log('did I mute?')
+              });
 
+              publication.track.on('enabled', () => {
+                console.log('did I unmute?')
+              });
             }
           });
 
           participant.on('trackSubscribed', (track: any) => {
             console.log(track)
-            document.getElementById('remote-media-div')!.appendChild(track.attach());
 
+            if(participant.sid === this.activeSpeaker.value.sid) {
+              console.log('adding video?')
+              document.getElementById('twilio-user-view-div')!.appendChild(track.attach());
+            }
+            
+            track.on('disabled', () => {
+
+              if(participant.sid === this.activeSpeaker.value.sid) {
+                this.activeSpeaker.value.muted = true
+              }
+
+              console.log('did I mute again?')
+            });
+
+            track.on('enabled', () => {
+
+              if(participant.sid === this.activeSpeaker.value.sid) {
+                this.activeSpeaker.value.muted = false
+              }
+
+              console.log('did I unmute again?')
+            });
 
           });
+
+          participant.on('trackUnsubscribed', (track: any) => {
+            console.log('a video was stopped')
+
+            if(participant.sid === this.activeSpeaker.value.sid) {
+              var selfTwilioVideo = document.getElementById('twilio-user-view-div')
+              selfTwilioVideo?.querySelector('video')?.remove()
+            }
+            
+          })
         });
 
         this.twilioRoom.on('participantConnected', (participant: any) => {
           console.log(participant)
+
+          this._snackBar.open(participant.identity + ' joined', '', {
+            verticalPosition: 'top',
+            duration: 2 * 1000,
+          });
+
+          // set active speaker
+          if(Array.from(this.twilioRoom.participants, ([name, value]) => ({name, value})).length) {
+            console.log(this.twilioRoom.participants[1])
+            this.activeSpeaker = Array.from(this.twilioRoom.participants, ([name, value]) => ({name, value}))[0]
+
+            console.log(this.activeSpeaker)
+
+            if(this.activeSpeaker.value.videoTracks.size) {
+              // could add a loader here for particpant video
+              console.log('load particpant video')
+            }
+
+            console.log('active speaker', this.activeSpeaker)
+          }
+
           participant.tracks.forEach((publication: any) => {
             console.log(publication)
-            if (publication.isSubscribed) {
-              const track = publication.track
-              console.log(track)
-              document.getElementById('remote-media-div')!.appendChild(track.attach())
+            // if (publication.isSubscribed) {
+            //   const track = publication.track
+            //   console.log(track)
+            //   document.getElementById('twilio-user-view-div')!.appendChild(track.attach())
+            // }
+
+            if (publication.track) {
+              document.getElementById('twilio-user-view-div')!.appendChild(publication.track.attach());
+
+              publication.track.on('disabled', () => {
+                console.log('did I mute? 2')
+
+                console.log(participant)
+              });
+
+              publication.track.on('enabled', () => {
+                console.log('did I unmute? 2')
+
+                if(participant.sid === this.activeSpeaker.value.sid) {
+                  this.activeSpeaker.value.muted = true
+                }
+              });
+            }
+          })
+
+          participant.on('trackSubscribed', (track: any) => {
+            console.log(track)
+
+            // only render if active speaker
+            if(participant.sid === this.activeSpeaker.value.sid) {
+              console.log('adding video?')
+              document.getElementById('twilio-user-view-div')!.appendChild(track.attach());
+            }
+
+            track.on('disabled', () => {
+              console.log('did I mute again? 2')
+
+              if(participant.sid === this.activeSpeaker.value.sid) {
+                this.activeSpeaker.value.muted = true
+              }
+            });
+
+            track.on('enabled', () => {
+              console.log('did I unmute again? 2')
+
+              if(participant.sid === this.activeSpeaker.value.sid) {
+                this.activeSpeaker.value.muted = false
+              }
+            });
+
+          });
+
+          participant.on('trackUnsubscribed', (track: any) => {
+            console.log('a video was stopped')
+
+            // only stop rendering if active speaker
+            console.log('removing video?')
+
+            if(participant.sid === this.activeSpeaker.value.sid) {
+              var selfTwilioVideo = document.getElementById('twilio-user-view-div')
+              selfTwilioVideo?.querySelector('video')?.remove()
             }
           })
         })
 
-        console.log(this.twilioRoom.participants)
+        this.twilioRoom.on('participantDisconnected', (participant: any) => {
+          console.log('someone left', participant)
+
+          // if active speaker, change active speaker.
+
+          if(participant.sid === this.activeSpeaker.value.sid) {
+            // do nothing, speaker is already active speaker
+
+            var selfTwilioVideo = document.getElementById('twilio-user-view-div')
+            selfTwilioVideo?.querySelector('video')?.remove()
+
+            this.activeSpeaker = this.activeSpeaker = Array.from(this.twilioRoom.participants, ([name, value]) => ({name, value}))[0]
+            console.log('new user talking change view', this.activeSpeaker)
+
+            if(this.activeSpeaker.value.videoTracks.size) {
+              console.log(Array.from(this.activeSpeaker.value.videoTracks, ([name, value]) => ({name, value})))
+              document.getElementById('twilio-user-view-div')!.appendChild(Array.from(this.activeSpeaker.value.videoTracks, ([name, value]) => ({name, value}))[0].value.track.attach());
+            }
+
+          } else {
+            // stop rendering the previous active speakers video, render the first user in the list
+
+            // var selfTwilioVideo = document.getElementById('twilio-user-view-div')
+            // selfTwilioVideo?.querySelector('video')?.remove()
+
+            // this.activeSpeaker = this.activeSpeaker = Array.from(this.twilioRoom.participants, ([name, value]) => ({name, value}))[0]
+            // console.log('new user talking change view', this.activeSpeaker)
+
+            // if(this.activeSpeaker.value.videoTracks.size) {
+            //   console.log(Array.from(this.activeSpeaker.value.videoTracks, ([name, value]) => ({name, value})))
+            //   document.getElementById('twilio-user-view-div')!.appendChild(Array.from(this.activeSpeaker.value.videoTracks, ([name, value]) => ({name, value}))[0].value.track.attach());
+            // }
+
+            // document.getElementById('twilio-user-view-div')!.appendChild(this.activeSpeaker.value.videoTracks.attach());
+          }
+
+          this._snackBar.open(participant.identity + ' left', '', {
+            verticalPosition: 'top',
+            duration: 2 * 1000,
+          });
+
+        })
+
+        this.twilioRoom.on('dominantSpeakerChanged', (participant: any) => {
+          console.log(participant);
+          console.log(participant.identity, participant.sid)
+
+          console.log(participant.sid === this.activeSpeaker.value.sid)
+
+          // twilio to do: active speaker logic, user list logic, audio
+
+          if(participant) {
+            if(participant.sid === this.activeSpeaker.value.sid) {
+              // do nothing, speaker is already active speaker
+            } else {
+              // stop rendering the previous active speakers video, render the new video
+              console.log('swicth video')
+              var selfTwilioVideo = document.getElementById('twilio-user-view-div')
+              selfTwilioVideo?.querySelector('video')?.remove()
+
+
+              this.activeSpeaker.value = participant
+
+              if(this.activeSpeaker.value.videoTracks.size) {
+                console.log(Array.from(this.activeSpeaker.value.videoTracks, ([name, value]) => ({name, value})))
+                document.getElementById('twilio-user-view-div')!.appendChild(Array.from(this.activeSpeaker.value.videoTracks, ([name, value]) => ({name, value}))[0].value.track.attach());
+              }
+              
+
+              setTimeout(() => {
+                console.log(this.activeSpeaker)
+              })
+
+              // document.getElementById('twilio-user-view-div')!.appendChild(this.activeSpeaker.value.videoTracks.attach());
+            }
+          } else {
+            // if null don't do anything
+          }
+
+          // set active speaker when 2nd user joins
+
+          // set active speaker to null when 2nd user leaves.
+          // if active speaker leaves, set active speaker to 2nd user in the list
+        });
+
+        console.log(this.twilioRoom.localParticipant)
+        let whyTwilio = Array.from(this.twilioRoom.participants, ([name, value]) => ({name, value}))
+        console.log(whyTwilio)
 
       }).catch((error: any) => {
         console.log(error)
@@ -305,7 +546,7 @@ export class AppComponent {
       this.agoraClient.join('59dcf92e250b4392839cf3c7ea2818d0', configForm.sessionName, token).then((data: any) => {
         console.log(data)
         this.sessionLoading = false
-        this.inSession = true
+        this.session = true
       }).catch((error: any) => {
         console.log(error)
         this.sessionLoading = false
@@ -319,6 +560,23 @@ export class AppComponent {
       this.zoomStream.startAudio()
       this.mic = true
       this.audio = true
+      this.audioLoading = false
+    } else if(this.videoSDKProvider === 'twilio') {
+      createLocalAudioTrack().then((localAudioTrack: any) => {
+        this.twilioRoom.localParticipant.publishTrack(localAudioTrack);
+        const audioElement = localAudioTrack.attach();
+        document.body.appendChild(audioElement);
+
+        console.log('twilio mic')
+
+        // this.twilioRoom.localParticipant.audioTracks.forEach((publication: any) => {
+        //   publication.enable()
+        // })
+
+        this.micLoading = false
+        this.mic = true
+        this.audio = true
+      })
     }
   }
 
@@ -335,15 +593,12 @@ export class AppComponent {
         publication.track.enable()
       })
 
-      // .createLocalAudioTrack().then(function(audioTrack) {
-      //   const audioElement = audioTrack.attach()
-      //   document.body.appendChild(audioElement)
-      // })
-      //
-
-      console.log('twilio mic')
       this.micLoading = false
       this.mic = true
+      
+      
+
+      
     } else if(this.videoSDKProvider === 'agora') {
       this.agoraClient.createMicrophoneAudioTrack()
       console.log('agora mic')
@@ -376,19 +631,48 @@ export class AppComponent {
     this.cameraLoading = true
 
     if(this.videoSDKProvider === 'zoom') {
-      if(this.platform.BLINK) {
+
+      if((!this.zoomStream.isSupportMultipleVideos() && (typeof OffscreenCanvas === 'function')) || /android/i.test(navigator.userAgent)) {
+        // start video - video will render automatically on HTML Video Element if MediaStreamTrackProcessor is supported
         this.zoomStream.startVideo({ videoElement: document.getElementById('self-view-video') }).then(() => {
-          this.cameraLoading = false
-          this.camera = true
-        })
-      } else {
-        this.zoomStream.startVideo().then(() => {
-          this.zoomStream.renderVideo(document.getElementById('self-view-canvas'), this.zoomClient.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 3).then(() => {
-            this.cameraLoading = false
-            this.camera = true
+           // if MediaStreamTrackProcessor is not supported
+           if(!(typeof MediaStreamTrackProcessor === 'function')) {
+              // render video on HTML Canvas Element
+              this.zoomStream.renderVideo(document.getElementById('self-view-canvas'), this.zoomClient.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 2).then(() => {
+                // show HTML Canvas Element in DOM
+                this.useCanvasElementForZoom = true
+                this.cameraLoading = false
+                this.camera = true
+              }).catch((error: any) => {
+                 console.log(error)
+              })
+            } else {
+                // show HTML Video Element in DOM
+                this.useVideoElementForZoom = true
+                this.cameraLoading = false
+                this.camera = true
+            }
+          }).catch((error: any) => {
+            console.log(error)
           })
-        })
-      }
+          // desktop Chrome, Edge, and Firefox with SharedArrayBuffer enabled, and all other browsers
+        } else {
+          // start video
+          this.zoomStream.startVideo().then(() => {
+            // render video on HTML Canvas Element
+            this.zoomStream.renderVideo(document.getElementById('self-view-canvas'), this.zoomClient.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 2).then(() => {
+                // show HTML Canvas Element in DOM
+                this.useCanvasElementForZoom = true
+                this.cameraLoading = false
+                this.camera = true
+            }).catch((error: any) => {
+                console.log(error)
+            })
+          }).catch((error: any) => {
+            console.log(error)
+          })
+        }
+
     } else if(this.videoSDKProvider === 'twilio') {
 
       // works for self view
@@ -404,11 +688,14 @@ export class AppComponent {
       createLocalVideoTrack({
         height: { ideal: 720, min: 480, max: 1080 },
         width:  { ideal: 1280, min: 640, max: 1920 },
-        aspectRatio: 1.77777777778,
-      }).then((localTrack: any) => {
-        this.twilioRoom.localParticipant.publishTrack(localTrack);
-        const localMediaContainer = document.getElementById('local-media');
-        localMediaContainer!.appendChild(localTrack.attach());
+        aspectRatio: 16/9,
+      }).then((localVideoTrack: any) => {
+        this.twilioRoom.localParticipant.publishTrack(localVideoTrack);
+        const localMediaContainer = document.getElementById('twilio-self-view-div')
+        localMediaContainer!.appendChild(localVideoTrack.attach())
+
+        this.cameraLoading = false
+        this.camera = true
       });
 
       // this.twilioRoom.localParticipant.videoTracks.forEach((publication: any) => {
@@ -416,9 +703,6 @@ export class AppComponent {
       //   publication.track.start()
       //   publication.publish(publication)
       // })
-
-      this.cameraLoading = false
-      this.camera = true
     } else if(this.videoSDKProvider === 'agora') {
       this.agoraClient.createCameraVideoTrack()
       this.cameraLoading = false
@@ -434,6 +718,9 @@ export class AppComponent {
       this.zoomStream.stopVideo()
       this.cameraLoading = false
       this.camera = false
+      this.useCanvasElementForZoom = false
+      this.useVideoElementForZoom = false
+      // stop rendering my own video.
     } else if(this.videoSDKProvider === 'twilio') {
 
       // createLocalVideoTrack().then((localTrack: any) => {
@@ -445,10 +732,14 @@ export class AppComponent {
       this.twilioRoom.localParticipant.videoTracks.forEach((publication: any) => {
         publication.unpublish();
         publication.track.stop();
+        var selfTwilioVideo = document.getElementById('twilio-self-view-div')
+        selfTwilioVideo?.querySelector('video')?.remove()
+        
+        console.log('video stopped')
+        this.cameraLoading = false
+        this.camera = false
       })
 
-      this.cameraLoading = false
-      this.camera = false
     } else if(this.videoSDKProvider === 'agora') {
       this.agoraClient.createCameraVideoTrack().setEnabled(false)
       this.cameraLoading = false
@@ -462,20 +753,37 @@ export class AppComponent {
     this.camera = false
     this.mic = false
     this.audio = false
+    this.useCanvasElementForZoom = false
+    this.useVideoElementForZoom = false
+    this.activeSpeaker = null
 
     setTimeout(() => {
       if(this.videoSDKProvider === 'zoom') {
         this.zoomClient.leave()
         this.sessionLoading = false
-        this.inSession = false
+        this.session = false
       } else if(this.videoSDKProvider === 'twilio') {
+        this.twilioRoom.localParticipant.videoTracks.forEach((publication: any) => {
+          publication.unpublish();
+          publication.track.stop();
+          var selfTwilioVideo = document.getElementById('twilio-self-view-div')
+          selfTwilioVideo?.querySelector('video')?.remove()
+        })
+        
+        this.twilioRoom.localParticipant.audioTracks.forEach((publication: any) => {
+          publication.unpublish();
+          publication.track.stop();
+          document.querySelector('audio')?.remove()
+        })
+
         this.twilioRoom.disconnect()
+
         this.sessionLoading = false
-        this.inSession = false
+        this.session = false
       } else if(this.videoSDKProvider === 'agora') {
         this.agoraClient.leave()
         this.sessionLoading = false
-        this.inSession = false
+        this.session = false
       }
     }, 500)
 

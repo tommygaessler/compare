@@ -10,12 +10,20 @@ mat-grid-tile mat-icon {
   color: #ffffff;
 }
 
+p mat-icon {
+  width: 17px;
+  vertical-align: middle;
+  height: 17px;
+  font-size: 15px;
+}
+
 p {
   margin: 0;
   position: absolute;
   bottom: 10px;
   left: 10px;
   color: #ffffff;
+  z-index: 1;
 }
 
 .view {
@@ -28,6 +36,16 @@ p {
   justify-content: center;
   align-items: center;
   height: 100vh;
+}
+
+#twilio-self-view-div, #twilio-user-view-div {
+  width: 100%;
+  height: 100%;
+}
+
+#self-view-video, #self-view-canvas {
+  transform: scaleX(-1);
+  height: 100% !important;
 }
 
 video, canvas {
@@ -55,6 +73,7 @@ video, canvas {
   display: flex;
   justify-content: center;
   width: 100%;
+  z-index: 2;
 }
 
 .controls button {

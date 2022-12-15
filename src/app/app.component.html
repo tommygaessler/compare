@@ -1,10 +1,10 @@
-<form [formGroup]="configForm" class="config" *ngIf="!inSession && !sessionLoading" (ngSubmit)="authorize(configForm.value)">
+<form [formGroup]="configForm" class="config" *ngIf="!session && !sessionLoading" (ngSubmit)="authorize(configForm.value)">
   <mat-form-field appearance="outline">
     <mat-label>Video SDK Provider</mat-label>
     <mat-select formControlName="videoSDKProvider">
       <mat-option value="zoom">Zoom Video SDK</mat-option>
       <mat-option value="twilio">Twilio Video SDK</mat-option>
-      <mat-option value="agora">Agora Video SDK</mat-option>
+      <!-- <mat-option value="agora">Agora Video SDK</mat-option> -->
     </mat-select>
   </mat-form-field>
 
@@ -26,22 +26,22 @@
     <mat-icon matSuffix>vpn_key</mat-icon>
   </mat-form-field>
 
-  <button mat-fab color="primary" *ngIf="!inSession">
+  <button mat-fab color="primary" *ngIf="!session">
     <mat-icon>login</mat-icon>
   </button>
 </form>
 
-<div class="controls" *ngIf="inSession && !sessionLoading">
+<div class="controls" *ngIf="session && !sessionLoading">
 
-  <button mat-fab color="primary" (click)="startAudio()" *ngIf="!mic && !audio && videoSDKProvider === 'zoom'">
+  <button mat-fab color="primary" (click)="startAudio()" *ngIf="!mic && !audio">
     <mat-icon>volume_off</mat-icon>
   </button>
 
-  <button mat-fab color="primary" (click)="mute()" *ngIf="mic && (audio || videoSDKProvider !== 'zoom')">
+  <button mat-fab color="primary" (click)="mute()" *ngIf="mic && audio">
     <mat-icon>mic</mat-icon>
   </button>
 
-  <button mat-fab color="primary" (click)="unmute()" *ngIf="!mic && (audio || videoSDKProvider !== 'zoom')">
+  <button mat-fab color="primary" (click)="unmute()" *ngIf="!mic && audio">
     <mat-icon>mic_off</mat-icon>
   </button>
 
@@ -55,8 +55,8 @@
 
   <!-- zoom specific, make compatible with other SDK providers -->
   <ng-container *ngIf="videoSDKProvider==='zoom'">
-    <button mat-fab color="primary" [matMenuTriggerFor]="menu">
-      <mat-icon [matBadge]="zoomClient.getAllUser().length">people</mat-icon>
+    <button mat-fab color="primary" [matMenuTriggerFor]="menu" [matBadge]="zoomClient.getAllUser().length">
+      <mat-icon>people</mat-icon>
     </button>
     <mat-menu #menu="matMenu">
       <button mat-menu-item *ngFor="let user of zoomClient.getAllUser()">{{ user.displayName }}</button>
@@ -64,11 +64,13 @@
   </ng-container>
 
   <ng-container *ngIf="videoSDKProvider==='twilio' && twilioRoom.participants">
-    <button mat-fab color="primary" [matMenuTriggerFor]="menu">
-      <mat-icon [matBadge]="twilioRoom.participants.size+1">people</mat-icon>
+    <button mat-fab color="primary" [matMenuTriggerFor]="menu" [matBadge]="twilioRoom.participants.size+1">
+      <mat-icon>people</mat-icon>
     </button>
+    <!-- fix this since twilio does not use arrays for some reason -->
     <mat-menu #menu="matMenu">
-      <button mat-menu-item *ngFor="let user of twilioRoom.participants">{{ user }}</button>
+      <button mat-menu-item>{{ twilioRoom.localParticipant.identity }}</button>
+      <button mat-menu-item *ngFor="let user of twilioRoom.participants | twilio">{{ user.value.identity }}</button>
     </mat-menu>
   </ng-container>
 
@@ -86,26 +88,61 @@
 <!-- <mat-spinner *ngIf="micLoading"></mat-spinner> -->
 <!-- <mat-spinner *ngIf="cameraLoading"></mat-spinner> -->
 
-<div class="view" [style.display]="inSession ? 'flex' : 'none'">
+<div class="view" [style.display]="session ? 'flex' : 'none'">
   <mat-grid-list [cols]="breakpoint" rowHeight="16:9" (window:resize)="onResize($event)">
     <mat-grid-tile>
-      <p *ngIf="zoomClient && zoomClient.getCurrentUserInfo()">{{ zoomClient.getCurrentUserInfo().displayName }} (me)</p>
-      <mat-icon *ngIf="!camera">sentiment_satisfied_alt</mat-icon>
-      <video id="self-view-video" width="1920" height="1080" [hidden]="!platform.BLINK || !camera || videoSDKProvider!=='zoom'"></video>
-      <canvas id="self-view-canvas" width="1920" height="1080" [hidden]="platform.BLINK || !camera || videoSDKProvider!=='zoom'"></canvas>
-      <div id="local-media" *ngIf="videoSDKProvider==='twilio'"></div>
+      <mat-spinner *ngIf="cameraLoading"></mat-spinner>
+      <ng-container *ngIf="videoSDKProvider==='zoom'">
+        <p *ngIf="zoomClient && zoomClient.getCurrentUserInfo()">
+          <mat-icon *ngIf="audio && !mic">mic_off</mat-icon>
+          <mat-icon *ngIf="audio && mic">mic_on</mat-icon>
+          <mat-icon *ngIf="!audio">volume_off</mat-icon>
+          {{ zoomClient.getCurrentUserInfo().displayName }} (me)
+        </p>
+        <mat-icon *ngIf="!camera && !cameraLoading">sentiment_satisfied_alt</mat-icon>
+        <video id="self-view-video" width="1920" height="1080" [hidden]="!useVideoElementForZoom"></video>
+        <canvas id="self-view-canvas" width="1920" height="1080" [hidden]="!useCanvasElementForZoom"></canvas>
+      </ng-container>
+      <ng-container *ngIf="videoSDKProvider==='twilio'">
+        <p *ngIf="twilioRoom">
+          <mat-icon *ngIf="audio && !mic">mic_off</mat-icon>
+          <mat-icon *ngIf="audio && mic">mic_on</mat-icon>
+          <mat-icon *ngIf="!audio">volume_off</mat-icon>
+          {{ twilioRoom.localParticipant.identity }} (me)
+        </p>
+        <mat-icon *ngIf="!camera && !cameraLoading">sentiment_satisfied_alt</mat-icon>
+        <div id="twilio-self-view-div" [hidden]="!camera"></div>
+      </ng-container>
     </mat-grid-tile>
     <mat-grid-tile>
       <!-- if no particpant -->
       <p *ngIf="!activeSpeaker">Waiting for others to join...</p>
-      <!-- else -->
-      <p *ngIf="activeSpeaker">{{ activeSpeaker.displayName }}</p>
+      <ng-container *ngIf="videoSDKProvider==='zoom'">
+        <!-- else -->
+        <p *ngIf="activeSpeaker">
+          <mat-icon *ngIf="activeSpeaker.audio && activeSpeaker.muted">mic_off</mat-icon>
+          <mat-icon *ngIf="activeSpeaker.audio && !activeSpeaker.muted">mic_on</mat-icon>
+          <mat-icon *ngIf="!activeSpeaker.audio">volume_off</mat-icon>
+          {{ activeSpeaker.displayName }}
+        </p>
 
-      <!-- if no video -->
-      <mat-icon *ngIf="activeSpeaker && !activeSpeaker.bVideoOn">insert_emoticon</mat-icon>
-      <!-- else -->
-      <canvas id="participant-canvas" width="1920" height="1080" [hidden]="!activeSpeaker || !activeSpeaker.bVideoOn || videoSDKProvider!=='zoom'" *ngIf="zoomClient"></canvas>
-      <div id="remote-media-div" *ngIf="videoSDKProvider==='twilio'"></div>
+        <!-- if no video -->
+        <mat-icon *ngIf="activeSpeaker && !activeSpeaker.bVideoOn">insert_emoticon</mat-icon>
+        <!-- else -->
+        <canvas id="participant-canvas" width="1920" height="1080" [hidden]="!activeSpeaker || !activeSpeaker.bVideoOn" *ngIf="zoomClient"></canvas>
+      </ng-container>
+      <ng-container *ngIf="videoSDKProvider==='twilio'">
+        <p *ngIf="activeSpeaker && activeSpeaker.value">
+          <mat-icon *ngIf="activeSpeaker.value.audioTracks.size && activeSpeaker.value.muted">mic_off</mat-icon>
+          <mat-icon *ngIf="activeSpeaker.value.audioTracks.size && !activeSpeaker.value.muted">mic_on</mat-icon>
+          <mat-icon *ngIf="!activeSpeaker.value.audioTracks.size">volume_off</mat-icon>
+          {{ activeSpeaker.value.identity }}
+        </p>
+
+        <!-- if no video -->
+        <mat-icon *ngIf="activeSpeaker && !activeSpeaker.value.videoTracks.size">insert_emoticon</mat-icon>
+        <div id="twilio-user-view-div" [hidden]="!activeSpeaker || !activeSpeaker.value.videoTracks.size"></div>
+      </ng-container>
     </mat-grid-tile>
   </mat-grid-list>
 </div>
