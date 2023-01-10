@@ -31,6 +31,10 @@
   </button>
 </form>
 
+<div class="videoSDKProvider" *ngIf="session && !sessionLoading">
+  <h1>{{ videoSDKProvider }} Video SDK</h1>
+</div>
+
 <div class="controls" *ngIf="session && !sessionLoading">
 
   <button mat-fab color="primary" (click)="startAudio()" *ngIf="!mic && !audio">
@@ -55,22 +59,22 @@
 
   <!-- zoom specific, make compatible with other SDK providers -->
   <ng-container *ngIf="videoSDKProvider==='zoom'">
-    <button mat-fab color="primary" [matMenuTriggerFor]="menu" [matBadge]="zoomClient.getAllUser().length">
+    <button mat-fab color="primary" [matMenuTriggerFor]="menu" [matBadge]="zoomVideo.getAllUser().length">
       <mat-icon>people</mat-icon>
     </button>
     <mat-menu #menu="matMenu">
-      <button mat-menu-item *ngFor="let user of zoomClient.getAllUser()">{{ user.displayName }}</button>
+      <button mat-menu-item *ngFor="let user of zoomVideo.getAllUser()">{{ user.displayName }}</button>
     </mat-menu>
   </ng-container>
 
-  <ng-container *ngIf="videoSDKProvider==='twilio' && twilioRoom.participants">
-    <button mat-fab color="primary" [matMenuTriggerFor]="menu" [matBadge]="twilioRoom.participants.size+1">
+  <ng-container *ngIf="videoSDKProvider==='twilio' && twilioSession.participants">
+    <button mat-fab color="primary" [matMenuTriggerFor]="menu" [matBadge]="twilioSession.participants.size+1">
       <mat-icon>people</mat-icon>
     </button>
     <!-- fix this since twilio does not use arrays for some reason -->
     <mat-menu #menu="matMenu">
-      <button mat-menu-item>{{ twilioRoom.localParticipant.identity }}</button>
-      <button mat-menu-item *ngFor="let user of twilioRoom.participants | twilio">{{ user.value.identity }}</button>
+      <button mat-menu-item>{{ twilioSession.localParticipant.identity }}</button>
+      <button mat-menu-item *ngFor="let user of twilioSession.participants | twilio">{{ user.value.identity }}</button>
     </mat-menu>
   </ng-container>
 
@@ -93,22 +97,22 @@
     <mat-grid-tile>
       <mat-spinner *ngIf="cameraLoading"></mat-spinner>
       <ng-container *ngIf="videoSDKProvider==='zoom'">
-        <p *ngIf="zoomClient && zoomClient.getCurrentUserInfo()">
+        <p *ngIf="zoomVideo && zoomVideo.getCurrentUserInfo()">
           <mat-icon *ngIf="audio && !mic">mic_off</mat-icon>
           <mat-icon *ngIf="audio && mic">mic_on</mat-icon>
           <mat-icon *ngIf="!audio">volume_off</mat-icon>
-          {{ zoomClient.getCurrentUserInfo().displayName }} (me)
+          {{ zoomVideo.getCurrentUserInfo().displayName }} (me)
         </p>
         <mat-icon *ngIf="!camera && !cameraLoading">sentiment_satisfied_alt</mat-icon>
         <video id="self-view-video" width="1920" height="1080" [hidden]="!useVideoElementForZoom"></video>
         <canvas id="self-view-canvas" width="1920" height="1080" [hidden]="!useCanvasElementForZoom"></canvas>
       </ng-container>
       <ng-container *ngIf="videoSDKProvider==='twilio'">
-        <p *ngIf="twilioRoom">
+        <p *ngIf="twilioSession">
           <mat-icon *ngIf="audio && !mic">mic_off</mat-icon>
           <mat-icon *ngIf="audio && mic">mic_on</mat-icon>
           <mat-icon *ngIf="!audio">volume_off</mat-icon>
-          {{ twilioRoom.localParticipant.identity }} (me)
+          {{ twilioSession.localParticipant.identity }} (me)
         </p>
         <mat-icon *ngIf="!camera && !cameraLoading">sentiment_satisfied_alt</mat-icon>
         <div id="twilio-self-view-div" [hidden]="!camera"></div>
@@ -129,7 +133,7 @@
         <!-- if no video -->
         <mat-icon *ngIf="activeSpeaker && !activeSpeaker.bVideoOn">insert_emoticon</mat-icon>
         <!-- else -->
-        <canvas id="participant-canvas" width="1920" height="1080" [hidden]="!activeSpeaker || !activeSpeaker.bVideoOn" *ngIf="zoomClient"></canvas>
+        <canvas id="participant-canvas" width="1920" height="1080" [hidden]="!activeSpeaker || !activeSpeaker.bVideoOn" *ngIf="zoomVideo"></canvas>
       </ng-container>
       <ng-container *ngIf="videoSDKProvider==='twilio'">
         <p *ngIf="activeSpeaker && activeSpeaker.value">
