@@ -90,10 +90,10 @@ export class AppComponent {
     this.videoSDKProvider = configForm.videoSDKProvider
 
     if(this.videoSDKProvider === 'zoom') {
-      this.httpClient.post('https://videosdk-sample-signature.herokuapp.com', {
+      this.httpClient.post('https://or116ttpz8.execute-api.us-west-1.amazonaws.com/default/videosdk', JSON.stringify({
         sessionName: configForm.sessionName,
         role: 0
-      }).toPromise().then((data: any) => {
+      })).toPromise().then((data: any) => {
         console.log(data.signature)
         this.join(data.signature, configForm)
       }).catch((error) => {
