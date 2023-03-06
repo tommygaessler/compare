@@ -634,46 +634,33 @@ export class AppComponent {
 
     if(this.videoSDKProvider === 'zoom') {
 
-      if((!this.zoomSession.isSupportMultipleVideos() && (typeof OffscreenCanvas === 'function')) || /android/i.test(navigator.userAgent)) {
+      if(this.zoomSession.isRenderSelfViewWithVideoElement()) {
         // start video - video will render automatically on HTML Video Element if MediaStreamTrackProcessor is supported
         this.zoomSession.startVideo({ videoElement: document.getElementById('self-view-video') }).then(() => {
-           // if MediaStreamTrackProcessor is not supported
-           if(!(typeof MediaStreamTrackProcessor === 'function')) {
-              // render video on HTML Canvas Element
-              this.zoomSession.renderVideo(document.getElementById('self-view-canvas'), this.zoomVideo.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 2).then(() => {
-                // show HTML Canvas Element in DOM
-                this.useCanvasElementForZoom = true
-                this.cameraLoading = false
-                this.camera = true
-              }).catch((error: any) => {
-                 console.log(error)
-              })
-            } else {
-                // show HTML Video Element in DOM
-                this.useVideoElementForZoom = true
-                this.cameraLoading = false
-                this.camera = true
-            }
+          // show HTML Video Element in DOM
+          this.useVideoElementForZoom = true
+          this.cameraLoading = false
+          this.camera = true
+        }).catch((error: any) => {
+          console.log(error)
+        })
+      // desktop Chrome, Edge, and Firefox with SharedArrayBuffer enabled, and all other browsers
+      } else {
+        // start video
+        this.zoomSession.startVideo().then(() => {
+          // render video on HTML Canvas Element
+          this.zoomSession.renderVideo(document.getElementById('self-view-canvas'), this.zoomVideo.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 2).then(() => {
+            // show HTML Canvas Element in DOM
+            this.useCanvasElementForZoom = true
+            this.cameraLoading = false
+            this.camera = true
           }).catch((error: any) => {
             console.log(error)
           })
-          // desktop Chrome, Edge, and Firefox with SharedArrayBuffer enabled, and all other browsers
-        } else {
-          // start video
-          this.zoomSession.startVideo().then(() => {
-            // render video on HTML Canvas Element
-            this.zoomSession.renderVideo(document.getElementById('self-view-canvas'), this.zoomVideo.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 2).then(() => {
-                // show HTML Canvas Element in DOM
-                this.useCanvasElementForZoom = true
-                this.cameraLoading = false
-                this.camera = true
-            }).catch((error: any) => {
-                console.log(error)
-            })
-          }).catch((error: any) => {
-            console.log(error)
-          })
-        }
+        }).catch((error: any) => {
+          console.log(error)
+        })
+      }
 
     } else if(this.videoSDKProvider === 'twilio') {
 
