@@ -101,10 +101,10 @@ export class AppComponent {
         this.sessionLoading = false
       })
     } else if(this.videoSDKProvider === 'twilio') {
-      this.httpClient.post('https://twiliovideo-auth-server.herokuapp.com', {
+      this.httpClient.post('https://r6q7q3xd4a.execute-api.us-west-1.amazonaws.com/default/twiliosdk', JSON.stringify({
         sessionName: configForm.sessionName,
         identity: configForm.yourName
-      }).toPromise().then((data: any) => {
+      })).toPromise().then((data: any) => {
         console.log(data.signature)
         this.join(data.signature, configForm)
       }).catch((error) => {
@@ -112,10 +112,10 @@ export class AppComponent {
         this.sessionLoading = false
       })
     } else if(this.videoSDKProvider === 'agora') {
-      this.httpClient.post('http://localhost:4400', {
+      this.httpClient.post('https://cjth3g96g3.execute-api.us-west-1.amazonaws.com/default/agorasdk', JSON.stringify({
         sessionName: configForm.sessionName,
         role: '1'
-      }).toPromise().then((data: any) => {
+      })).toPromise().then((data: any) => {
         console.log(data.signature)
         this.join(data.signature, configForm)
       }).catch((error) => {
