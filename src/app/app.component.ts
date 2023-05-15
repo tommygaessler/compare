@@ -28,6 +28,13 @@ export class AppComponent {
   useVideoElementForZoom: boolean = false
   useCanvasElementForZoom: boolean = false
 
+  zoomVideoQosSend: any
+  zoomAudioQosSend: any
+  zoomVideoQosReceive: any
+  zoomAudioQosReceive: any
+  zoomNetworkQosUplink: any
+  zoomNetworkQosDownlink: any
+
   // twilio
   twilioVideo: any = TwilioVideo
   twilioSession: any
@@ -137,6 +144,49 @@ export class AppComponent {
         this.sessionLoading = false
         this.session = true
 
+        this.zoomSession.subscribeAudioStatisticData().then(() => {
+
+          console.log('test')
+          this.zoomVideo.on('audio-statistic-data-change', (payload: any) => {
+
+            if(payload.data.encoding === true) {
+              this.zoomAudioQosSend = payload
+            } else if(payload.data.encoding === false) {
+              this.zoomAudioQosReceive = payload
+            }
+
+            console.log(payload)
+           })
+        })
+
+        this.zoomSession.subscribeVideoStatisticData().then(() => {
+
+          console.log('test')
+          this.zoomVideo.on('video-statistic-data-change', (payload: any) => {
+
+            if(payload.data.encoding === true) {
+              this.zoomVideoQosSend = payload
+            } else if(payload.data.encoding === false) {
+              this.zoomVideoQosReceive = payload
+            }
+
+            console.log(payload)
+           })
+        })
+
+        
+
+        
+
+         this.zoomVideo.on('network-quality-change', (payload: any) => {
+          console.log(payload)
+          if(payload.type === 'uplink' && payload.userId === this.zoomVideo.getCurrentUserInfo().userId) {
+            this.zoomNetworkQosUplink = payload
+          } else if(payload.type === 'downlink' && payload.userId === this.zoomVideo.getCurrentUserInfo().userId) {
+            this.zoomNetworkQosDownlink = payload
+          }
+         })
+
         console.log(this.zoomVideo.getAllUser())
 
         if(this.zoomVideo.getAllUser().length > 1) {
@@ -216,7 +266,7 @@ export class AppComponent {
             }
           }
 
-          this._snackBar.open(payload[0].userId + ' left', '', {
+          this._snackBar.open(payload[0].displayName + ' left', '', {
             verticalPosition: 'top',
             duration: 2 * 1000,
           });

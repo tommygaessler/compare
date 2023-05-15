@@ -78,7 +78,63 @@
     </mat-menu>
   </ng-container>
 
-
+  <ng-container *ngIf="videoSDKProvider==='zoom'">
+    <button mat-fab color="primary" [matMenuTriggerFor]="menu">
+      <mat-icon>signal_cellular_alt</mat-icon>
+    </button>
+    <mat-menu #menu="matMenu">
+      <h3>Quality of Service</h3>
+      <h4>Network</h4>
+      <h5>My Uplink</h5>
+      <ul *ngIf="zoomNetworkQosUplink">
+        <li>{{ zoomNetworkQosUplink.level }} / 5</li>
+      </ul>
+      <h5>My Downlink</h5>
+      <ul *ngIf="zoomNetworkQosDownlink">
+        <li>{{ zoomNetworkQosDownlink.level }} / 5</li>
+      </ul>
+      <h4>Video</h4>
+      <h5>Sending</h5>
+      <ul *ngIf="zoomVideoQosSend">
+        <li>avg_loss: {{ zoomVideoQosSend.data.avg_loss }}</li>
+        <li>jitter: {{ zoomVideoQosSend.data.jitter }}</li>
+        <li>max_loss: {{ zoomVideoQosSend.data.max_loss }}</li>
+        <li>rtt: {{ zoomVideoQosSend.data.rtt }}</li>
+        <li>sample_rate: {{ zoomVideoQosSend.data.sample_rate }}</li>
+        <li>width: {{ zoomVideoQosSend.data.width }}</li>
+        <li>height: {{ zoomVideoQosSend.data.height }}</li>
+        <li>fps: {{ zoomVideoQosSend.data.fps }}</li>
+      </ul>
+      <h5>Receiving</h5>
+      <ul *ngIf="zoomVideoQosReceive">
+        <li>avg_loss: {{ zoomVideoQosReceive.data.avg_loss }}</li>
+        <li>jitter: {{ zoomVideoQosReceive.data.jitter }}</li>
+        <li>max_loss: {{ zoomVideoQosReceive.data.max_loss }}</li>
+        <li>rtt: {{ zoomVideoQosReceive.data.rtt }}</li>
+        <li>sample_rate: {{ zoomVideoQosReceive.data.sample_rate }}</li>
+        <li>width: {{ zoomVideoQosReceive.data.width }}</li>
+        <li>height: {{ zoomVideoQosReceive.data.height }}</li>
+        <li>fps: {{ zoomVideoQosReceive.data.fps }}</li>
+      </ul>
+      <h4>Audio</h4>
+      <h5>Sending</h5>
+       <ul *ngIf="zoomAudioQosSend">
+        <li>avg_loss: {{ zoomAudioQosSend.data.avg_loss }}</li>
+        <li>jitter: {{ zoomAudioQosSend.data.jitter }}</li>
+        <li>max_loss: {{ zoomAudioQosSend.data.max_loss }}</li>
+        <li>rtt: {{ zoomAudioQosSend.data.rtt }}</li>
+        <li>sample_rate: {{ zoomAudioQosSend.data.sample_rate }}</li>
+      </ul>
+      <h5>Receiving</h5>
+      <ul *ngIf="zoomAudioQosReceive">
+        <li>avg_loss: {{ zoomAudioQosReceive.data.avg_loss }}</li>
+        <li>jitter: {{ zoomAudioQosReceive.data.jitter }}</li>
+        <li>max_loss: {{ zoomAudioQosReceive.data.max_loss }}</li>
+        <li>rtt: {{ zoomAudioQosReceive.data.rtt }}</li>
+        <li>sample_rate: {{ zoomAudioQosReceive.data.sample_rate }}</li>
+      </ul>
+    </mat-menu>
+  </ng-container>
 
   <button mat-fab color="warn" (click)="leave()">
     <mat-icon>logout</mat-icon>
