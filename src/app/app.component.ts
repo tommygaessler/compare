@@ -195,7 +195,7 @@ export class AppComponent {
           if(this.activeSpeaker.bVideoOn) {
             // could add a loader here for particpant video
             console.log('loading particpant video')
-            this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 2).then((data: any) => {
+            this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then((data: any) => {
               console.log(data)
             })
           }
@@ -257,7 +257,7 @@ export class AppComponent {
               this.activeSpeaker = this.zoomVideo.getAllUser()[1]
 
               if(this.activeSpeaker.bVideoOn) {
-                this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 2).then(() => {
+                this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then(() => {
                   console.log(data)
                 })
               }
@@ -291,7 +291,7 @@ export class AppComponent {
             // render their video if it is on
             if(this.activeSpeaker.bVideoOn) {
               // could add a loader here for particpant video
-              this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 2).then(() => {
+              this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then(() => {
                 console.log(data)
               })
             }
@@ -304,7 +304,7 @@ export class AppComponent {
           if(!this.activeSpeaker || payload.userId === this.activeSpeaker.userId) {
             if (payload.action === 'Start') {
               // could add a loader here for particpant video
-              this.zoomSession.renderVideo(document.getElementById('participant-canvas'), payload.userId, 1920, 1080, 0, 0, 2).then((data: any) => {
+              this.zoomSession.renderVideo(document.getElementById('participant-canvas'), payload.userId, 1920, 1080, 0, 0, 3).then((data: any) => {
                 this.activeSpeaker = this.zoomVideo.getAllUser().filter((user:any) => {
                   return payload.userId === user.userId
                 })[0]
@@ -686,7 +686,7 @@ export class AppComponent {
 
       if(this.zoomSession.isRenderSelfViewWithVideoElement()) {
         // start video - video will render automatically on HTML Video Element if MediaStreamTrackProcessor is supported
-        this.zoomSession.startVideo({ videoElement: document.getElementById('self-view-video') }).then(() => {
+        this.zoomSession.startVideo({ videoElement: document.getElementById('self-view-video'), hd: true }).then(() => {
           // show HTML Video Element in DOM
           this.useVideoElementForZoom = true
           this.cameraLoading = false
@@ -697,9 +697,9 @@ export class AppComponent {
       // desktop Chrome, Edge, and Firefox with SharedArrayBuffer enabled, and all other browsers
       } else {
         // start video
-        this.zoomSession.startVideo().then(() => {
+        this.zoomSession.startVideo({hd: true}).then(() => {
           // render video on HTML Canvas Element
-          this.zoomSession.renderVideo(document.getElementById('self-view-canvas'), this.zoomVideo.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 2).then(() => {
+          this.zoomSession.renderVideo(document.getElementById('self-view-canvas'), this.zoomVideo.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 3).then(() => {
             // show HTML Canvas Element in DOM
             this.useCanvasElementForZoom = true
             this.cameraLoading = false
