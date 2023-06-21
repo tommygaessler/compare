@@ -41,6 +41,10 @@ export class AppComponent {
 
   // agora
   agoraClient: any
+  selfAgoraVideo: any
+  selfAgoraAudio: any
+  remoteAgoraVideo: any
+  remoteAgoraAudio: any
 
   // state
   session: boolean = false
@@ -72,7 +76,8 @@ export class AppComponent {
       videoSDKProvider: new UntypedFormControl('zoom'),
       yourName: new UntypedFormControl('User A'),
       sessionName: new UntypedFormControl('testsdk'),
-      sessionPasscode: new UntypedFormControl('zoom123')
+      sessionPasscode: new UntypedFormControl('zoom123'),
+      geoRegions: new UntypedFormControl('')
     })
 
     history.pushState(null, '', window.location.href)
@@ -99,7 +104,8 @@ export class AppComponent {
     if(this.videoSDKProvider === 'zoom') {
       this.httpClient.post('https://or116ttpz8.execute-api.us-west-1.amazonaws.com/default/videosdk', JSON.stringify({
         sessionName: configForm.sessionName,
-        role: 0
+        role: 0,
+        geoRegions: configForm.geoRegions
       })).toPromise().then((data: any) => {
         console.log(data.signature)
         this.join(data.signature, configForm)
@@ -594,15 +600,104 @@ export class AppComponent {
       })
 
     } else if(this.videoSDKProvider === 'agora') {
+      console.log(configForm)
       this.agoraClient = AgoraRTC.createClient({ codec: 'vp8', mode: 'rtc' })
-      this.agoraClient.join('59dcf92e250b4392839cf3c7ea2818d0', configForm.sessionName, token).then((data: any) => {
+      this.agoraClient.join('59dcf92e250b4392839cf3c7ea2818d0', configForm.sessionName, token, configForm.yourName).then((data: any) => {
         console.log(data)
         this.sessionLoading = false
         this.session = true
+
+        console.log(this.agoraClient.remoteUsers)
+
+        // check for existing users?
+        if(this.agoraClient.remoteUsers.length) {
+          // render some users here if they exist
+          this.activeSpeaker = this.agoraClient.remoteUsers[0]
+          console.log(this.activeSpeaker)
+        }
+
+        // put event listeners here
+        this.agoraClient.on('user-joined', (user: any) => {
+          console.log('user joined', user)
+
+          console.log('check current users', this.agoraClient.remoteUsers[0].uid)
+
+          if(!this.activeSpeaker) {
+            this.activeSpeaker = user
+            console.log(this.activeSpeaker.lX)
+          }
+
+          // maybe call length check again
+          // render user if first to join, otherwise do nothing
+        })
+
+        this.agoraClient.on('user-left', (user: any) => {
+          console.log('user left', user)
+
+          if(this.activeSpeaker.uid === user.uid) {
+
+            if(this.agoraClient.remoteUsers.length) {
+              this.activeSpeaker = this.agoraClient.remoteUsers[0]
+            } else {
+              this.activeSpeaker = null
+            }
+          }
+
+          // maybe call length check again
+          // if currently rendered user, render new one or update the list.
+        })
+
+        
+
+        this.agoraClient.on('user-published', (user: any, mediaType: any) => {
+
+          this.agoraClient.subscribe(user, mediaType).then(() => {
+            if(mediaType === 'audio') {
+              this.remoteAgoraAudio = user.audioTrack
+              this.remoteAgoraAudio.play()
+            }
+  
+            if(mediaType === 'video') {
+              if(this.activeSpeaker.uid === user.uid) {
+                // render the video here
+  
+                this.remoteAgoraVideo = user.videoTrack
+                const localMediaContainer = document.getElementById('agora-user-view-div')
+          
+                this.remoteAgoraVideo.play(localMediaContainer)
+              }
+            }
+          })
+
+        })
+
+        this.agoraClient.on('user-unpublished', (user: any, mediaType: any) => {
+          // dont do anything here?
+
+          if(mediaType === 'video') {
+            if(this.activeSpeaker.uid === user.uid) {
+              var selfTwilioVideo = document.getElementById('agora-user-view-div')
+              selfTwilioVideo?.querySelector('div')?.remove()
+            }
+          }
+          
+        })
+
+        // tracks to publish their audio and video
+
+        // active speaker, this is janky, will leave it out
+        // this.agoraClient.enableAudioVolumeIndicator();
+
+        // this.agoraClient.on('volume-indicator', (user: any) => {
+
+        // })
+
       }).catch((error: any) => {
         console.log(error)
         this.sessionLoading = false
       })
+
+
     }
   }
 
@@ -624,6 +719,21 @@ export class AppComponent {
         // this.twilioSession.localParticipant.audioTracks.forEach((publication: any) => {
         //   publication.enable()
         // })
+
+        this.micLoading = false
+        this.mic = true
+        this.audio = true
+      })
+    } else if(this.videoSDKProvider === 'agora') {
+      AgoraRTC.createMicrophoneAudioTrack().then((data) => {
+        console.log(data)
+        this.selfAgoraAudio = data
+
+        this.agoraClient.publish([this.selfAgoraAudio])
+
+        // const localMediaContainer = document.getElementById('agora-self-view-div')
+
+        // this.selfAgoraVideo.play(localMediaContainer)
 
         this.micLoading = false
         this.mic = true
@@ -652,10 +762,25 @@ export class AppComponent {
 
       
     } else if(this.videoSDKProvider === 'agora') {
-      this.agoraClient.createMicrophoneAudioTrack()
-      console.log('agora mic')
+
+      this.selfAgoraAudio.setEnabled(true);
       this.micLoading = false
       this.mic = true
+
+      // AgoraRTC.createMicrophoneAudioTrack().then((data) => {
+      //   console.log(data)
+      //   this.selfAgoraAudio = data
+
+      //   this.agoraClient.publish([this.selfAgoraAudio])
+
+      //   // const localMediaContainer = document.getElementById('agora-self-view-div')
+
+      //   // this.selfAgoraVideo.play(localMediaContainer)
+
+      //   this.micLoading = false
+      //   this.mic = true
+      // })
+      
     }
   }
 
@@ -673,7 +798,9 @@ export class AppComponent {
       this.micLoading = false
       this.mic = false
     } else if(this.videoSDKProvider === 'agora') {
-      this.agoraClient.createMicrophoneAudioTrack().setEnabled(false)
+
+      this.selfAgoraAudio.setEnabled(false);
+
       this.micLoading = false
       this.mic = false
     }
@@ -743,9 +870,21 @@ export class AppComponent {
       //   publication.publish(publication)
       // })
     } else if(this.videoSDKProvider === 'agora') {
-      this.agoraClient.createCameraVideoTrack()
-      this.cameraLoading = false
-      this.camera = true
+
+      AgoraRTC.createCameraVideoTrack().then((data) => {
+        console.log(data)
+        this.selfAgoraVideo = data
+
+        this.agoraClient.publish([this.selfAgoraVideo])
+
+        const localMediaContainer = document.getElementById('agora-self-view-div')
+
+        this.selfAgoraVideo.play(localMediaContainer)
+
+        this.cameraLoading = false
+        this.camera = true
+      })
+      
     }
   }
 
@@ -780,7 +919,16 @@ export class AppComponent {
       })
 
     } else if(this.videoSDKProvider === 'agora') {
-      this.agoraClient.createCameraVideoTrack().setEnabled(false)
+
+      // make sure this is right
+      
+      this.agoraClient.unpublish([this.selfAgoraVideo])
+      this.selfAgoraVideo.close()
+
+      var selfTwilioVideo = document.getElementById('agora-self-view-div')
+      selfTwilioVideo?.querySelector('div')?.remove()
+      this.selfAgoraVideo = null
+
       this.cameraLoading = false
       this.camera = false
     }
@@ -820,7 +968,21 @@ export class AppComponent {
         this.sessionLoading = false
         this.session = false
       } else if(this.videoSDKProvider === 'agora') {
+
+        if(this.selfAgoraVideo) {
+          this.agoraClient.unpublish([this.selfAgoraVideo])
+          this.selfAgoraVideo.close()
+          var selfAgoraVideo = document.getElementById('agora-self-view-div')
+          selfAgoraVideo?.querySelector('div')?.remove()
+        }
+
+        if(this.selfAgoraAudio) {
+          this.agoraClient.unpublish([this.selfAgoraAudio])
+          this.selfAgoraAudio.close()
+        }
+
         this.agoraClient.leave()
+
         this.sessionLoading = false
         this.session = false
       }
@@ -830,3 +992,5 @@ export class AppComponent {
   }
 
 }
+
+// add users button remote user logic.

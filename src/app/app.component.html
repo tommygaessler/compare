@@ -4,7 +4,7 @@
     <mat-select formControlName="videoSDKProvider">
       <mat-option value="zoom">Zoom Video SDK</mat-option>
       <mat-option value="twilio">Twilio Video SDK</mat-option>
-      <!-- <mat-option value="agora">Agora Video SDK</mat-option> -->
+      <mat-option value="agora">Agora Video SDK</mat-option>
     </mat-select>
   </mat-form-field>
 
@@ -24,6 +24,13 @@
     <mat-label>Session Passcode</mat-label>
     <input matInput formControlName="sessionPasscode" autocomplete="off">
     <mat-icon matSuffix>vpn_key</mat-icon>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" *ngIf="configForm.value.videoSDKProvider==='zoom'">
+    <mat-label>Geo Regions (Zoom only)</mat-label>
+    <input matInput formControlName="geoRegions" autocomplete="off">
+    <mat-hint>Comma separeted list of <a href="https://developers.zoom.us/docs/video-sdk/auth/#payload" target="_blank">country codes</a>.</mat-hint>
+    <mat-icon matSuffix>public</mat-icon>
   </mat-form-field>
 
   <button mat-fab color="primary" *ngIf="!session">
@@ -75,6 +82,17 @@
     <mat-menu #menu="matMenu">
       <button mat-menu-item>{{ twilioSession.localParticipant.identity }}</button>
       <button mat-menu-item *ngFor="let user of twilioSession.participants | twilio">{{ user.value.identity }}</button>
+    </mat-menu>
+  </ng-container>
+
+  <ng-container *ngIf="videoSDKProvider==='agora' && agoraClient.remoteUsers">
+    <button mat-fab color="primary" [matMenuTriggerFor]="menu" [matBadge]="agoraClient.remoteUsers.length+1">
+      <mat-icon>people</mat-icon>
+    </button>
+    <!-- fix this since twilio does not use arrays for some reason -->
+    <mat-menu #menu="matMenu">
+      <button mat-menu-item>{{ configForm.value.yourName }}</button>
+      <button mat-menu-item *ngFor="let user of agoraClient.remoteUsers">{{ user.uid }}</button>
     </mat-menu>
   </ng-container>
 
@@ -173,6 +191,16 @@
         <mat-icon *ngIf="!camera && !cameraLoading">sentiment_satisfied_alt</mat-icon>
         <div id="twilio-self-view-div" [hidden]="!camera"></div>
       </ng-container>
+      <ng-container *ngIf="videoSDKProvider==='agora'">
+        <p *ngIf="session">
+          <mat-icon *ngIf="audio && !mic">mic_off</mat-icon>
+          <mat-icon *ngIf="audio && mic">mic_on</mat-icon>
+          <mat-icon *ngIf="!audio">volume_off</mat-icon>
+          {{ configForm.value.yourName }} (me)
+        </p>
+        <mat-icon *ngIf="!camera && !cameraLoading">sentiment_satisfied_alt</mat-icon>
+        <div id="agora-self-view-div" [hidden]="!camera"></div>
+      </ng-container>
     </mat-grid-tile>
     <mat-grid-tile>
       <!-- if no particpant -->
@@ -202,6 +230,18 @@
         <!-- if no video -->
         <mat-icon *ngIf="activeSpeaker && !activeSpeaker.value.videoTracks.size">insert_emoticon</mat-icon>
         <div id="twilio-user-view-div" [hidden]="!activeSpeaker || !activeSpeaker.value.videoTracks.size"></div>
+      </ng-container>
+      <ng-container *ngIf="videoSDKProvider==='agora'">
+        <p *ngIf="activeSpeaker">
+          <mat-icon *ngIf="activeSpeaker._audio_added_ && activeSpeaker._audio_muted_">mic_off</mat-icon>
+          <mat-icon *ngIf="activeSpeaker._audio_added_ && !activeSpeaker._audio_muted_">mic_on</mat-icon>
+          <mat-icon *ngIf="!activeSpeaker._audio_added_">volume_off</mat-icon>
+          {{ activeSpeaker.uid }}
+        </p>
+
+        <!-- if no video -->
+        <mat-icon *ngIf="activeSpeaker && !activeSpeaker._video_added_">insert_emoticon</mat-icon>
+        <div id="agora-user-view-div" [hidden]="!activeSpeaker || !activeSpeaker._video_added_"></div>
       </ng-container>
     </mat-grid-tile>
   </mat-grid-list>

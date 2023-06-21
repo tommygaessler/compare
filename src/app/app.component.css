@@ -38,7 +38,7 @@ p {
   height: 100vh;
 }
 
-#twilio-self-view-div, #twilio-user-view-div {
+#twilio-self-view-div, #twilio-user-view-div, #agora-self-view-div, #agora-user-view-div {
   width: 100%;
   height: 100%;
 }
