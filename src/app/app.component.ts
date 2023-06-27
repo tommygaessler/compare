@@ -872,7 +872,7 @@ export class AppComponent {
     } else if(this.videoSDKProvider === 'agora') {
 
       AgoraRTC.createCameraVideoTrack({
-        encoderConfig: "720p_1"
+        encoderConfig: "720p_2"
       }).then((data) => {
         console.log(data)
         this.selfAgoraVideo = data
