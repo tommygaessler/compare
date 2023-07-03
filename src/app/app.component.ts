@@ -59,6 +59,8 @@ export class AppComponent {
   audio: boolean = false
   audioLoading: boolean = false
   audioError: boolean = false
+
+  cameraSwitchCycle = 0
   
   activeSpeaker: any;
 
@@ -806,6 +808,59 @@ export class AppComponent {
     }
   }
 
+  switchCamera() {
+    console.log('switch camera')
+
+    // get list of camera devices, toggle through them by going one by one in array and then restarting.
+
+    if(this.videoSDKProvider === 'zoom') {
+
+
+
+      
+
+      // console.log(this.zoomSession.getCameraList()[this.cameraSwitchCycle].deviceId)
+      console.log('current', this.cameraSwitchCycle)
+
+      this.zoomSession.switchCamera(this.zoomSession.getCameraList()[this.cameraSwitchCycle].deviceId)
+
+      if(this.zoomSession.getCameraList().length-1 <= this.cameraSwitchCycle) {
+        this.cameraSwitchCycle = 0
+      } else {
+        this.cameraSwitchCycle += 1
+      }
+
+      console.log('new', this.cameraSwitchCycle)
+
+
+    } else if(this.videoSDKProvider === 'twilio') {
+      // this.twilioSession.
+      console.log('not implemented for Twilio, ask Tommy to add if needed')
+    } else if(this.videoSDKProvider === 'agora') {
+      console.log(AgoraRTC.getCameras())
+
+      
+
+      AgoraRTC.getCameras().then((cameras) => {
+        console.log(cameras)
+
+        this.selfAgoraVideo.setDevice(cameras[this.cameraSwitchCycle].deviceId)
+
+        if(cameras.length-1 <= this.cameraSwitchCycle) {
+          this.cameraSwitchCycle = 0
+        } else {
+          this.cameraSwitchCycle += 1
+        }
+      }).catch((error) => {
+        console.log(error)
+      })
+
+      
+
+      
+    }
+  }
+
   startCamera() {
     this.cameraLoading = true
 
@@ -933,6 +988,7 @@ export class AppComponent {
 
       this.cameraLoading = false
       this.camera = false
+      this.cameraSwitchCycle = 0
     }
   }
 
@@ -945,6 +1001,7 @@ export class AppComponent {
     this.useCanvasElementForZoom = false
     this.useVideoElementForZoom = false
     this.activeSpeaker = null
+    this.cameraSwitchCycle = 0
 
     setTimeout(() => {
       if(this.videoSDKProvider === 'zoom') {

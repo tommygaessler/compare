@@ -64,6 +64,10 @@
     <mat-icon>videocam_off</mat-icon>
   </button>
 
+  <button mat-fab color="primary" (click)="switchCamera()" [disabled]="!camera">
+    <mat-icon>cameraswitch</mat-icon>
+  </button>
+
   <!-- zoom specific, make compatible with other SDK providers -->
   <ng-container *ngIf="videoSDKProvider==='zoom'">
     <button mat-fab color="primary" [matMenuTriggerFor]="menu" [matBadge]="zoomVideo.getAllUser().length">
