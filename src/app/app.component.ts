@@ -879,7 +879,7 @@ export class AppComponent {
       // desktop Chrome, Edge, and Firefox with SharedArrayBuffer enabled, and all other browsers
       } else {
         // start video
-        this.zoomSession.startVideo({hd: true}).then(() => {
+        this.zoomSession.startVideo({ hd: true }).then(() => {
           // render video on HTML Canvas Element
           this.zoomSession.renderVideo(document.getElementById('self-view-canvas'), this.zoomVideo.getCurrentUserInfo().userId, 1920, 1080, 0, 0, 3).then(() => {
             // show HTML Canvas Element in DOM
