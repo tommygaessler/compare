@@ -144,8 +144,8 @@ export class AppComponent {
 
     if(this.videoSDKProvider === 'zoom') {
       this.zoomVideo = ZoomVideo.createClient()
-      this.zoomVideo.init('en-US', 'https://videosdk.qooeo.com/1.8.5/lib')
-      this.zoomVideo.join(configForm.sessionName, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfa2V5IjoiMFNlaUZFOEk5VXB1VERTZUUyajRWOFpabm8wbFBkS0xCaHcyIiwiaWF0IjoxNjkxNDQ1NjUyLCJleHAiOjE2OTE0NTI4NTIsInRwYyI6InNka3Rlc3QiLCJ1c2VyX2lkZW50aXR5IjoiIiwic2Vzc2lvbl9rZXkiOiIiLCJyb2xlX3R5cGUiOjAsInB3ZCI6IiIsInRlbGVtZXRyeV90cmFja2luZ19pZCI6IjVkMDYxYzIzLTkxOTktNDFmMC1hMzBhLTUyMzRhNTIyODk5NSJ9.r3krH6PQK4v2MQ7_PJDcwdjO-piAownkZIXF7treiIo', configForm.yourName, configForm.sessionPasscode).then((data: any) => {
+      this.zoomVideo.init('en-US', 'CDN')
+      this.zoomVideo.join(configForm.sessionName, token, configForm.yourName, configForm.sessionPasscode).then((data: any) => {
         console.log(data)
         console.log(this.zoomVideo.getSessionInfo())
         this.zoomSession = this.zoomVideo.getMediaStream()
