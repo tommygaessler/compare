@@ -144,7 +144,7 @@ export class AppComponent {
 
     if(this.videoSDKProvider === 'zoom') {
       this.zoomVideo = ZoomVideo.createClient()
-      this.zoomVideo.init('en-US', 'CDN')
+      this.zoomVideo.init('en-US')
       this.zoomVideo.join(configForm.sessionName, token, configForm.yourName, configForm.sessionPasscode).then((data: any) => {
         console.log(data)
         console.log(this.zoomVideo.getSessionInfo())
