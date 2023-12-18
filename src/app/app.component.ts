@@ -144,193 +144,195 @@ export class AppComponent {
 
     if(this.videoSDKProvider === 'zoom') {
       this.zoomVideo = ZoomVideo.createClient()
-      this.zoomVideo.init('en-US')
-      this.zoomVideo.join(configForm.sessionName, token, configForm.yourName, configForm.sessionPasscode).then((data: any) => {
-        console.log(data)
-        console.log(this.zoomVideo.getSessionInfo())
-        this.zoomSession = this.zoomVideo.getMediaStream()
-        this.sessionLoading = false
-        this.session = true
+      this.zoomVideo.init('en-US', 'Global', {
+        patchJsMedia: true
+      }).then(() => {
+        this.zoomVideo.join(configForm.sessionName, token, configForm.yourName, configForm.sessionPasscode).then((data: any) => {
+          console.log(data)
+          console.log(this.zoomVideo.getSessionInfo())
+          this.zoomSession = this.zoomVideo.getMediaStream()
+          this.sessionLoading = false
+          this.session = true
 
-        this.zoomSession.subscribeAudioStatisticData().then(() => {
+          this.zoomSession.subscribeAudioStatisticData().then(() => {
 
-          console.log('test')
-          this.zoomVideo.on('audio-statistic-data-change', (payload: any) => {
+            console.log('test')
+            this.zoomVideo.on('audio-statistic-data-change', (payload: any) => {
 
-            if(payload.data.encoding === true) {
-              this.zoomAudioQosSend = payload
-            } else if(payload.data.encoding === false) {
-              this.zoomAudioQosReceive = payload
-            }
+              if(payload.data.encoding === true) {
+                this.zoomAudioQosSend = payload
+              } else if(payload.data.encoding === false) {
+                this.zoomAudioQosReceive = payload
+              }
 
-            console.log(payload)
-           })
-        })
-
-        this.zoomSession.subscribeVideoStatisticData().then(() => {
-
-          console.log('test')
-          this.zoomVideo.on('video-statistic-data-change', (payload: any) => {
-
-            if(payload.data.encoding === true) {
-              this.zoomVideoQosSend = payload
-            } else if(payload.data.encoding === false) {
-              this.zoomVideoQosReceive = payload
-            }
-
-            console.log(payload)
-           })
-        })
-
-        
-
-        
-
-         this.zoomVideo.on('network-quality-change', (payload: any) => {
-          console.log(payload)
-          if(payload.type === 'uplink' && payload.userId === this.zoomVideo.getCurrentUserInfo().userId) {
-            this.zoomNetworkQosUplink = payload
-          } else if(payload.type === 'downlink' && payload.userId === this.zoomVideo.getCurrentUserInfo().userId) {
-            this.zoomNetworkQosDownlink = payload
-          }
-         })
-
-        console.log(this.zoomVideo.getAllUser())
-
-        if(this.zoomVideo.getAllUser().length > 1) {
-          this.activeSpeaker = this.zoomVideo.getAllUser()[1]
-
-          if(this.activeSpeaker.bVideoOn) {
-            // could add a loader here for particpant video
-            console.log('loading particpant video')
-            this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then((data: any) => {
-              console.log(data)
+              console.log(payload)
             })
-          }
+          })
 
-          console.log('active speaker', this.activeSpeaker)
-        }
+          this.zoomSession.subscribeVideoStatisticData().then(() => {
 
-        this.zoomVideo.on('media-sdk-change', (payload: any) => {
-          if (payload.type === 'audio' && payload.result === 'success') {
-            if (payload.action === 'encode') {
-              this.zoomAudioEncode = true
-            } else if (payload.action === 'decode') {
-              this.zoomAudioDecode = true
-            }
-          }
-        })
+            console.log('test')
+            this.zoomVideo.on('video-statistic-data-change', (payload: any) => {
 
-        this.zoomVideo.on('user-added', (payload: any) => {
-
-          this._snackBar.open(payload[0].displayName + ' joined', '', {
-            verticalPosition: 'top',
-            duration: 2 * 1000,
-          });
-
-          if(!this.activeSpeaker) {
-            console.log('second user joined', payload)
-            console.log(this.zoomVideo.getAllUser())
-            this.activeSpeaker = this.zoomVideo.getAllUser().filter((user:any) => {
-              return payload[0].userId === user.userId
-            })[0]
-          }
-        })
-
-        this.zoomVideo.on('user-updated', (payload: any) => {
-          // why does this trigger for myself? Maybe an edge case here?
-          if(this.zoomVideo.getCurrentUserInfo() && this.zoomVideo.getCurrentUserInfo().userId !== payload[0].userId) {
-            if(payload[0].userId === this.activeSpeaker.userId) {
-              if("audio" in payload[0]) {
-                this.activeSpeaker.audio = payload[0].audio
-              } else if("muted" in payload[0]) {
-                this.activeSpeaker.muted = payload[0].muted
+              if(payload.data.encoding === true) {
+                this.zoomVideoQosSend = payload
+              } else if(payload.data.encoding === false) {
+                this.zoomVideoQosReceive = payload
               }
+
+              console.log(payload)
+            })
+          })
+
+          
+
+          
+
+          this.zoomVideo.on('network-quality-change', (payload: any) => {
+            console.log(payload)
+            if(payload.type === 'uplink' && payload.userId === this.zoomVideo.getCurrentUserInfo().userId) {
+              this.zoomNetworkQosUplink = payload
+            } else if(payload.type === 'downlink' && payload.userId === this.zoomVideo.getCurrentUserInfo().userId) {
+              this.zoomNetworkQosDownlink = payload
             }
-          }
-        })
+          })
 
-        // why does user-removed trigger when a user joins? Somethings happens?
-        this.zoomVideo.on('user-removed', (payload: any) => {
-          // why does an error throw here?
-          if(this.activeSpeaker.userId === payload[0].userId) {
-            console.log('active speaker left')
+          console.log(this.zoomVideo.getAllUser())
 
-            // stop rendering their video if it was on
-            if(this.activeSpeaker.bVideoOn) {
-              this.zoomSession.stopRenderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId)
-            }
+          if(this.zoomVideo.getAllUser().length > 1) {
+            this.activeSpeaker = this.zoomVideo.getAllUser()[1]
 
-            if(this.zoomVideo.getAllUser().length > 1) {
-              this.activeSpeaker = this.zoomVideo.getAllUser()[1]
-
-              if(this.activeSpeaker.bVideoOn) {
-                this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then(() => {
-                  console.log(data)
-                })
-              }
-            } else {
-              this.activeSpeaker = null
-            }
-          }
-
-          this._snackBar.open(payload[0].displayName + ' left', '', {
-            verticalPosition: 'top',
-            duration: 2 * 1000,
-          });
-        })
-
-        this.zoomVideo.on('active-speaker', (payload: any) => {
-
-          if(this.activeSpeaker.userId !== payload[0].userId && this.zoomVideo.getCurrentUserInfo().userId !== payload[0].userId) {
-            console.log('new active speaker', payload)
-
-            // stop rendering existing video if it was on
-            if(this.activeSpeaker.bVideoOn) {
-              this.zoomSession.stopRenderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId)
-            }
-            // re assign active speaker
-            this.activeSpeaker = this.zoomVideo.getAllUser().filter((user:any) => {
-              return payload[0].userId === user.userId
-            })[0]
-
-            console.log(this.activeSpeaker)
-
-            // render their video if it is on
             if(this.activeSpeaker.bVideoOn) {
               // could add a loader here for particpant video
-              this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then(() => {
+              console.log('loading particpant video')
+              this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then((data: any) => {
                 console.log(data)
               })
             }
 
+            console.log('active speaker', this.activeSpeaker)
           }
-        })
 
-        this.zoomVideo.on('peer-video-state-change', (payload: any) => {
-
-          if(!this.activeSpeaker || payload.userId === this.activeSpeaker.userId) {
-            if (payload.action === 'Start') {
-              // could add a loader here for particpant video
-              this.zoomSession.renderVideo(document.getElementById('participant-canvas'), payload.userId, 1920, 1080, 0, 0, 3).then((data: any) => {
-                this.activeSpeaker = this.zoomVideo.getAllUser().filter((user:any) => {
-                  return payload.userId === user.userId
-                })[0]
-              }).catch((error: any) => {
-                console.log(error)
-              })
-            } else if (payload.action === 'Stop') {
-              this.zoomSession.stopRenderVideo(document.getElementById('participant-canvas'), payload.userId).then((data: any) => {
-                this.activeSpeaker = this.zoomVideo.getAllUser().filter((user:any) => {
-                  return payload.userId === user.userId
-                })[0]
-              }).catch((error: any) => {
-                console.log(error)
-              })
+          this.zoomVideo.on('media-sdk-change', (payload: any) => {
+            if (payload.type === 'audio' && payload.result === 'success') {
+              if (payload.action === 'encode') {
+                this.zoomAudioEncode = true
+              } else if (payload.action === 'decode') {
+                this.zoomAudioDecode = true
+              }
             }
-          }
-        })
+          })
 
+          this.zoomVideo.on('user-added', (payload: any) => {
+
+            this._snackBar.open(payload[0].displayName + ' joined', '', {
+              verticalPosition: 'top',
+              duration: 2 * 1000,
+            });
+
+            if(!this.activeSpeaker) {
+              console.log('second user joined', payload)
+              console.log(this.zoomVideo.getAllUser())
+              this.activeSpeaker = this.zoomVideo.getAllUser().filter((user:any) => {
+                return payload[0].userId === user.userId
+              })[0]
+            }
+          })
+
+          this.zoomVideo.on('user-updated', (payload: any) => {
+            // why does this trigger for myself? Maybe an edge case here?
+            if(this.zoomVideo.getCurrentUserInfo() && this.zoomVideo.getCurrentUserInfo().userId !== payload[0].userId) {
+              if(payload[0].userId === this.activeSpeaker.userId) {
+                if("audio" in payload[0]) {
+                  this.activeSpeaker.audio = payload[0].audio
+                } else if("muted" in payload[0]) {
+                  this.activeSpeaker.muted = payload[0].muted
+                }
+              }
+            }
+          })
+
+          // why does user-removed trigger when a user joins? Somethings happens?
+          this.zoomVideo.on('user-removed', (payload: any) => {
+            // why does an error throw here?
+            if(this.activeSpeaker.userId === payload[0].userId) {
+              console.log('active speaker left')
+
+              // stop rendering their video if it was on
+              if(this.activeSpeaker.bVideoOn) {
+                this.zoomSession.stopRenderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId)
+              }
+
+              if(this.zoomVideo.getAllUser().length > 1) {
+                this.activeSpeaker = this.zoomVideo.getAllUser()[1]
+
+                if(this.activeSpeaker.bVideoOn) {
+                  this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then(() => {
+                    console.log(data)
+                  })
+                }
+              } else {
+                this.activeSpeaker = null
+              }
+            }
+
+            this._snackBar.open(payload[0].displayName + ' left', '', {
+              verticalPosition: 'top',
+              duration: 2 * 1000,
+            });
+          })
+
+          this.zoomVideo.on('active-speaker', (payload: any) => {
+
+            if(this.activeSpeaker.userId !== payload[0].userId && this.zoomVideo.getCurrentUserInfo().userId !== payload[0].userId) {
+              console.log('new active speaker', payload)
+
+              // stop rendering existing video if it was on
+              if(this.activeSpeaker.bVideoOn) {
+                this.zoomSession.stopRenderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId)
+              }
+              // re assign active speaker
+              this.activeSpeaker = this.zoomVideo.getAllUser().filter((user:any) => {
+                return payload[0].userId === user.userId
+              })[0]
+
+              console.log(this.activeSpeaker)
+
+              // render their video if it is on
+              if(this.activeSpeaker.bVideoOn) {
+                // could add a loader here for particpant video
+                this.zoomSession.renderVideo(document.getElementById('participant-canvas'), this.activeSpeaker.userId, 1920, 1080, 0, 0, 3).then(() => {
+                  console.log(data)
+                })
+              }
+
+            }
+          })
+
+          this.zoomVideo.on('peer-video-state-change', (payload: any) => {
+
+            if(!this.activeSpeaker || payload.userId === this.activeSpeaker.userId) {
+              if (payload.action === 'Start') {
+                // could add a loader here for particpant video
+                this.zoomSession.renderVideo(document.getElementById('participant-canvas'), payload.userId, 1920, 1080, 0, 0, 3).then((data: any) => {
+                  this.activeSpeaker = this.zoomVideo.getAllUser().filter((user:any) => {
+                    return payload.userId === user.userId
+                  })[0]
+                }).catch((error: any) => {
+                  console.log(error)
+                })
+              } else if (payload.action === 'Stop') {
+                this.zoomSession.stopRenderVideo(document.getElementById('participant-canvas'), payload.userId).then((data: any) => {
+                  this.activeSpeaker = this.zoomVideo.getAllUser().filter((user:any) => {
+                    return payload.userId === user.userId
+                  })[0]
+                }).catch((error: any) => {
+                  console.log(error)
+                })
+              }
+            }
+          })
+        })
       }).catch((error: any) => {
         console.log(error)
         this.sessionLoading = false
